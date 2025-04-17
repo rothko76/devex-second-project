@@ -28,3 +28,19 @@ variable "instance_type" {
   description = "EC2 instance type for the worker nodes"
   default     = "t3.medium"
 }
+
+variable "testing_instance_type" {
+  description = "EC2 instance for testing purposes"
+  default     = "t3.micro"
+}
+
+variable "lambda_bucket" {
+  description = "S3 bucket for Lambda function code"
+  default     = "devex-2nd-ex-lambda-bucket"
+}
+
+variable "lambda_" {
+  description = "S3 bucket for Lambda function code"
+  default     = "devex-2nd-ex-lambda-bucket"
+}
+

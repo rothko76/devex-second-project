@@ -20,6 +20,32 @@ crash.*.log
 # are not checked in
 override.tf
 override.tf.json
+
+# Python-related files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+*.venv/
+.venv/
+venv/
+env/
+ENV/
+.venv.bak/
+*.log
+*.coverage
+.coverage.*
+.cache/
+*.pytest_cache/
+.mypy_cache/
+.pytest_cache/
+.ipynb_checkpoints/
 *_override.tf
 *_override.tf.json
 

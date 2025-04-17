@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "devex-test-terraform-state-bucket"
+  bucket = "devex-2nd-ex-terraform-state-bucket"
 }
 
 resource "aws_s3_bucket_versioning" "versioning" {
@@ -24,7 +24,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "encryption" {
 }
 
 resource "aws_dynamodb_table" "terraform_locks" {
-  name         = "devex-test-terraform-lock-table"
+  name         = "devex-2nd-ex-terraform-lock-table"
   billing_mode = "PAY_PER_REQUEST"
   # The hash_key is used as the primary key for DynamoDB to manage Terraform state locking.
   hash_key     = "LockID"

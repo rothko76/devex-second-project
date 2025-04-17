@@ -1,3 +1,16 @@
+##backend
+terraform {
+  backend "s3" {
+    bucket         = "devex-2nd-ex-terraform-state-bucket"
+    key            = "prod/terraform.tfstate"  # Path inside the bucket
+    region         = "us-east-1"
+    encrypt        = true                      # Encrypt the state file
+    dynamodb_table = "devex-2nd-ex-terraform-lock-table"       # For state locking
+  }
+}
+
+
+#Vpc
 module "vpc" {
   source = "./modules/vpc"
 
@@ -20,6 +33,7 @@ module "security_groups" {
 }
 
 
+# EKS Cluster to host the backend application
 # module "eks" {
 #   source = "./modules/eks"
 
@@ -59,6 +73,7 @@ resource "aws_db_subnet_group" "db_subnet_group" {
   }
 }
 
+# RDS PostgreSQL
 module "rds_postgres" {
   source = "./modules/rds-postgres"
 
@@ -77,4 +92,92 @@ module "rds_postgres" {
   tags = {
     Name = "flask-app-rds"
   }
+}
+
+
+##Kinesis module
+module "kinesis" {
+  source = "./modules/kinesis"
+
+  vpc_id         = module.vpc.vpc_id
+  region         = var.region
+  backend_sg_ids = [module.security_groups.kinesis_sg_id]  # Example, replace with your SG
+  subnet_ids = module.vpc.private_subnets
+
+  
+  kinesis_streams = {
+    user_stream = {
+      stream_name       = "user"
+      retention_period  = 24
+      tags = {
+        Name = "user"
+        Environment = "dev"
+      }
+    },
+    product_stream = {
+      stream_name        = "product"
+      retention_period  = 24
+      tags= {
+        Name = "product"
+        Environment = "dev"
+      }
+    },
+    order_stream = {
+      stream_name        = "order"
+      retention_period  = 24
+      tags= {
+        Name = "order"
+        Environment = "dev"
+      }
+    }
+  }
+}
+
+resource "aws_lambda_function" "my_lambda" {
+  function_name = "my-lambda-function"
+  s3_bucket     = "devex-2nd-ex-lambda-bucket"
+  s3_key        = "lambda_function.zip"
+
+#  image_uri = "577640772961.dkr.ecr.us-east-1.amazonaws.com/devex-2nd-ex-lambda-repo:latest"
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.12"
+  role    = "arn:aws:iam::577640772961:role/lambda-kinesis-role"
+#  package_type  = "Image"
+#  timeout       = 30
+#  memory_size   = 512
+
+  layers = [
+      "arn:aws:lambda:us-east-1:577640772961:layer:psycopg2_binary:1"
+    ]
+
+  source_code_hash = data.aws_s3_object.lambda_object.etag
+
+    environment {
+    variables = {
+      DB_HOST     = module.rds_postgres.rds_hostname
+
+      #DB_HOST     = "_terraform-20250417072738679900000006.cwnw2e6a4074.us-east-1.rds.amazonaws.com" #module.rds_postgres.rds_hostname
+  #     #DB_PORT     = module.rds_postgres.rds_port
+      DB_USER     = "postgres_user"#module.rds_postgres.username
+      DB_PASSWORD = "password1234" #module.rds_postgres.password
+      DB_NAME     = "devex_second_project"#module.rds_postgres.db_name
+  #     # Other variables...
+    }
+  }
+}
+
+data "aws_s3_object" "lambda_object" {
+  bucket = "devex-2nd-ex-lambda-bucket"
+  key    = "lambda_function.zip"
+}
+
+
+resource "aws_lambda_event_source_mapping" "kinesis_trigger" {
+  event_source_arn  = "arn:aws:kinesis:us-east-1:577640772961:stream/order"
+  function_name     = aws_lambda_function.my_lambda.arn
+  starting_position = "LATEST"
+  batch_size        = 1
+
+  # Optional settings:
+  enabled           = true
 }
