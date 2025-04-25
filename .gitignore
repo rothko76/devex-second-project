@@ -28,6 +28,7 @@ __pycache__/
 *.pyd
 *.pdb
 *.egg
+*.zip
 *.egg-info/
 dist/
 build/

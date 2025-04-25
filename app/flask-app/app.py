@@ -10,11 +10,12 @@ app = Flask(__name__)
 kinesis_client = boto3.client('kinesis', region_name='us-east-1')
 
 # Kinesis stream name (you need to replace with your stream name)
-KINESIS_STREAM_NAME = 'my-data-stream'
+KINESIS_STREAM_NAME = 'product'
 
 
 @app.route('/')
 def index():
+    send_data()
     return "Welcome to the Data Streaming Demo!"
 
 
@@ -34,6 +35,5 @@ def send_data():
     return jsonify({"status": "Data sent to Kinesis", "response": response})
 
 
-if __name__ == '__main__':
-    # Get AWS credentials from environment variables or the AWS credentials file
-    app.run(debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

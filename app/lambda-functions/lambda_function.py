@@ -3,29 +3,89 @@ import os
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import base64
+import logging
 
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
+    """
+    Lambda function to process product data from Kinesis stream and write to PostgreSQL
+    """
+    # Get database connection parameters from environment variables
+    #db_host = os.environ.get('DB_HOST')
+    #db_name = os.environ.get('DB_NAME')
+    #db_user = os.environ.get('DB_USER')
+    #db_password = os.environ.get('DB_PASSWORD')
+    db_port = os.environ.get('DB_PORT', '5432')
 
+    db_host = "terraform-20250419140445418800000005.cwnw2e6a4074.us-east-1.rds.amazonaws.com"
+    db_name = "devex_second_project"
+    db_user = "postgres_user"
+    db_password ="password1234"
+    
+    # Process each record from the Kinesis stream
+    # for record in event['Records']:
+    #     try:
+    #         # Debug the incoming data
+    #         kinesis_data = record['kinesis']['data']
+    #         logger.info(f"Raw Kinesis data: {kinesis_data[:30]}...")
+            
+    #         # Try to decode the base64 data
+    #         try:
+    #             decoded_data = base64.b64decode(kinesis_data)
+    #             logger.info(f"Successfully decoded base64 data, length: {len(decoded_data)}")
+                
+    #             # Try to parse as JSON
+    #             try:
+    #                 message = json.loads(decoded_data)
+    #                 logger.info("Successfully parsed JSON data")
+                    
+    #                 # Extract metadata and validate event type
+    #                 event_type = message.get('metadata', {}).get('event_type')
+    #                 logger.info(f"Event type: {event_type}")
+                    
+    #                 if event_type in ['product_created', 'product_updated']:
+    #                     product_data = message.get('data', {})
+    #                     process_product(product_data, db_host, db_name, db_user, db_password, db_port)
+    #                 else:
+    #                     logger.info(f"Ignoring event type: {event_type}")
+                        
+    #             except json.JSONDecodeError as e:
+    #                 logger.error(f"Failed to parse JSON: {e}")
+    #                 # Try to print the raw data for debugging
+    #                 try:
+    #                     logger.info(f"Raw decoded content: {decoded_data[:100]}...")
+    #                 except:
+    #                     logger.info("Could not display raw decoded content")
+            
+    #         except UnicodeDecodeError as e:
+    #             logger.error(f"Unicode decode error: {e}")
+    #             # Try alternative decoding or handle the error
+    #             try:
+    #                 # Try Latin-1 encoding which accepts any byte value
+    #                 message_str = decoded_data.decode('latin-1')
+    #                 logger.info(f"Decoded with latin-1: {message_str[:100]}...")
+    #                 message = json.loads(message_str)
+    #                 event_type = message.get('metadata', {}).get('event_type')
+    #                 if event_type in ['product_created', 'product_updated']:
+    #                     product_data = message.get('data', {})
+    #                     process_product(product_data, db_host, db_name, db_user, db_password, db_port)
+    #                     print(f"Processed product data: {product_data}")
+    #             except Exception as e2:
+    #                 logger.error(f"Alternative decoding failed: {e2}")
+        
+    #     except Exception as e:
+    #         logger.error(f"Error processing record: {e}")
+    
+    # return {
+    #     'statusCode': 200,
+    #     'body': json.dumps('Processing completed')
+    # }
 
-    # Read the message from the stream
-    if 'Records' in event:
-        for record in event['Records']:
-            # Assuming the stream is an SQS event
-            if 'body' in record:
-                message = record['body']
-                print(f"Message from stream: {message}")
-            else:
-                print("No 'body' found in record")
-    else:
-        print("No 'Records' found in event")
-
-
-    db_host = os.environ['DB_HOST']
-    db_port = 5432 #os.environ['DB_PORT']
-    db_name = os.environ['DB_NAME']
-    db_user = os.environ['DB_USER']
-    db_password = os.environ['DB_PASSWORD']
     print("Environment Variables:")
     print(f"DB_USER: {db_user}")
     print(f"DB_PASSWORD: {db_password}")
@@ -47,9 +107,36 @@ def lambda_handler(event, context):
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         
         # Sample read operation - modify the query as needed
-        cursor.execute("SELECT * FROM users LIMIT 10")
-        results = cursor.fetchall()
-        
+        cursor.execute("""
+            INSERT INTO public.products 
+            ("name", description, price, stock_quantity, category_id, sku, image_url, is_active)
+            VALUES 
+            (
+              'Wireless Mouse',
+              'Ergonomic wireless mouse with adjustable DPI',
+              25.99,
+              100,
+              1,
+              'WM-001',
+              'https://example.com/images/mouse.jpg',
+              true
+            )
+            ON CONFLICT (sku) DO UPDATE
+            SET 
+              "name" = EXCLUDED.name,
+              description = EXCLUDED.description,
+              price = EXCLUDED.price,
+              stock_quantity = EXCLUDED.stock_quantity,
+              category_id = EXCLUDED.category_id,
+              image_url = EXCLUDED.image_url,
+              is_active = EXCLUDED.is_active,
+              updated_at = CURRENT_TIMESTAMP
+            RETURNING product_id;
+        """)
+        product_id = cursor.fetchone()['product_id']
+        conn.commit()
+        print(f"Inserted/Updated product with ID: {product_id}")
+      
         # Sample write operation - modify as needed
         # Uncomment to use write operations
         # sample_user = ("john_doe", "John", "Doe", "john@example.com")
@@ -61,17 +148,17 @@ def lambda_handler(event, context):
         # conn.commit()
         
         # Convert results to a list of dictionaries
-        result_list = [dict(row) for row in results]
+        # result_list = [dict(row) for row in results]
         
-        return {
-            'statusCode': 200,
-            'body': json.dumps({
-                'message': 'Database operation successful',
-                'data': result_list
-                # Uncomment for write operations
-                # 'newUserId': new_user_id
-            }, default=str)  # default=str handles dates and other non-serializable types
-        }
+        # return {
+        #     'statusCode': 200,
+        #     'body': json.dumps({
+        #         'message': 'Database operation successful',
+        #         'data': result_list
+        #         # Uncomment for write operations
+        #         # 'newUserId': new_user_id
+        #     }, default=str)  # default=str handles dates and other non-serializable types
+        # }
         
     except Exception as e:
         print(f"Database error: {str(e)}")

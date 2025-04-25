@@ -173,7 +173,7 @@ data "aws_s3_object" "lambda_object" {
 
 
 resource "aws_lambda_event_source_mapping" "kinesis_trigger" {
-  event_source_arn  = "arn:aws:kinesis:us-east-1:577640772961:stream/order"
+  event_source_arn  = "arn:aws:kinesis:us-east-1:577640772961:stream/product"
   function_name     = aws_lambda_function.my_lambda.arn
   starting_position = "LATEST"
   batch_size        = 1
