@@ -2,6 +2,39 @@
 Advanced Scalable E-commerce Web Application with Real-Time Streaming, Security, Autoscaling, and Helm on AWS
 
 
+
+- Setup
+
+#### Backend infra setup
+{project_root}/infrastructure/terraform_backend/
+
+```terraform apply```
+
+will setup:
+- S3 bucket for keeping terraform state  
+- DynamoDB table to manage the state lock
+
+#### Main infra setup
+```terraform destroy```
+
+#### Backend infra
+Before running make sure to empty the state bucked (manully)
+```terraform apply```
+
+
+
+#### Deploying the flask app on the EKS cluster
+
+
+
+Teardown
+
+#### Main setup
+
+
+#### 
+
+
 Core API Endpoints
 Products
 
