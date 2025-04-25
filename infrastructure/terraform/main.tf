@@ -138,13 +138,9 @@ resource "aws_lambda_function" "my_lambda" {
   s3_bucket     = "devex-2nd-ex-lambda-bucket"
   s3_key        = "lambda_function.zip"
 
-#  image_uri = "577640772961.dkr.ecr.us-east-1.amazonaws.com/devex-2nd-ex-lambda-repo:latest"
   handler = "lambda_function.lambda_handler"
   runtime = "python3.12"
   role    = "arn:aws:iam::577640772961:role/lambda-kinesis-role"
-#  package_type  = "Image"
-#  timeout       = 30
-#  memory_size   = 512
 
   layers = [
       "arn:aws:lambda:us-east-1:577640772961:layer:psycopg2_binary:1"
@@ -155,13 +151,9 @@ resource "aws_lambda_function" "my_lambda" {
     environment {
     variables = {
       DB_HOST     = module.rds_postgres.rds_hostname
-
-      #DB_HOST     = "_terraform-20250417072738679900000006.cwnw2e6a4074.us-east-1.rds.amazonaws.com" #module.rds_postgres.rds_hostname
-  #     #DB_PORT     = module.rds_postgres.rds_port
       DB_USER     = "postgres_user"#module.rds_postgres.username
       DB_PASSWORD = "password1234" #module.rds_postgres.password
       DB_NAME     = "devex_second_project"#module.rds_postgres.db_name
-  #     # Other variables...
     }
   }
 }

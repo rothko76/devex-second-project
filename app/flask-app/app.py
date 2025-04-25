@@ -15,7 +15,7 @@ KINESIS_STREAM_NAME = 'product'
 
 @app.route('/')
 def index():
-    send_data()
+   # send_data()
     return "Welcome to the Data Streaming Demo!"
 
 
