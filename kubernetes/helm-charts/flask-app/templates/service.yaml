@@ -1,0 +1,13 @@
+# TODO: Move to terraform
+apiVersion: v1
+kind: Service
+metadata:
+  name: balancer-service
+spec:
+  type: {{.Values.service.type}}
+  selector:
+    app: {{.Values.app.name}}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: {{.Values.service.port}}

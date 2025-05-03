@@ -1,0 +1,42 @@
+replicaCount: 3
+
+image:
+  repository: 577640772961.dkr.ecr.us-east-1.amazonaws.com/devex-2nd-ex-flask-app
+  pullPolicy: IfNotPresent
+  tag: latest
+
+service:
+  type: LoadBalancer
+  port: 5000
+  name: balancer-service
+
+app:
+  name: devex-2nd-ex-flask
+  fullname: devex-2nd-ex-flask-deployment
+  image: 577640772961.dkr.ecr.us-east-1.amazonaws.com/devex-2nd-ex-flask-app:latest
+  port: 5000
+
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+
+
+serviceAccount:
+  create: true
+  name: ""
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
