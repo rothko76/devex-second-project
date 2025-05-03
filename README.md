@@ -5,6 +5,7 @@ Advanced Scalable E-commerce Web Application with Real-Time Streaming, Security,
 
 ## Table of Contents
 1. [Introduction](#introduction)
+2. [Building and uploading flask app] (#build-and-upload-flask)
 2. [Setup](#setup)
     - [Prerequisites](#prerequisites)
     - [Backend Infrastructure Setup](#backend-infrastructure-setup)
@@ -25,9 +26,25 @@ This project demonstrates the deployment of an advanced, scalable e-commerce web
 
 ---
 
+## build-and-upload-flask
+### building the contain
+```bash
+sudo docker build -t devex-2nd-ex-flask-app .
+```
+
+### tag app
+```bash
+docker tag devex-2nd-ex-flask-app:latest {aws-account-id}.dkr.ecr.us-east-1.amazonaws.com/devex-2nd-ex-flask-app:latest
+```
+
+### upload container to ECR
+```bash
+docker push aws-account-id}.dkr.ecr.us-east-1.amazonaws.com/devex-2nd-ex-flask-app:latest
+```
+
 ## Setup
 
-### Prerequisites
+### 1. Prerequisites
 Ensure the following tools are installed and configured:
 - [Terraform](https://www.terraform.io/downloads.html)
 - [AWS CLI](https://aws.amazon.com/cli/) (configured with appropriate credentials)
@@ -36,7 +53,7 @@ Ensure the following tools are installed and configured:
 
 ---
 
-### Backend Infrastructure Setup
+### 2. Backend Infrastructure Setup
 Navigate to `{project_root}/infrastructure/terraform_backend/`. This directory contains Terraform configuration files for setting up:
 - The state bucket
 - DynamoDB table for state locking
@@ -48,13 +65,19 @@ terraform apply
 
 ---
 
-### Main Infrastructure Setup
+### 3. Main Infrastructure Setup
 Navigate to `{project_root}/infrastructure/main/`. This directory contains the main Terraform configuration files for deploying the core infrastructure.
 
 To apply the configuration:
 ```bash
 terraform apply
 ```
+
+### 4. Connect to the cluster
+```bash
+aws eks update-kubeconfig --region us-east-1 --name devex-2nd-ex-eks-cluster
+```
+
 
 ---
 
@@ -183,4 +206,52 @@ The Flask app can run locally by using Docker to build and run the container. Fo
     ```
 
 This setup allows you to test the Flask app locally before deploying it to the cloud.
+
+
+## Resource Screenshots
+
+The following screenshots showcase the deployed resources and their configurations. All screenshots are located in the `docs` directory relative to the project root.
+
+
+### Infrastructure
+- **State lock table**:  
+    ![backend infra](./docs/dynamo-db-state-lock.png)
+
+- **S3 buckets (tf state and lambdas)**:  
+    ![backend and main infra](./docs/s3-buckets.png)
+
+- **EKS cluster**:  
+    ![EKS Cluster](./docs/eks-cluter.png)
+
+- **EC2 instances**
+    ![Main Infrastructure](./docs/ec2-instances.png)
+
+- **Kinesis streams**:  
+    ![Pods and Services](./docs/kinesis-streams.png)
+
+- **Lambda function kinesis trigger**:  
+    ![IAM Roles](./docs/kinesis-trigger.png)
+
+- **Lambda function**:  
+    ![Network Policies](./docs/lambda-function.png)
+
+- **RDS (postgres)**:  
+    ![Horizontal Pod Autoscaler](./docs/rds-postgres-db-instance.png)
+
+
+### Test screenshots
+- **REST API curl call**
+    ![REST API curl](./docs/test-curl.png)
+
+- **Kinesis stream records**
+    ![Kinesis stream records](./docs/kinesis-stream-recods.png)
+
+- **Lambda cloud watch logs**
+    ![Lambda cloud watch logs](./docs/lambda-triggered-cloud-watch.png)
+
+- **RDS DB record written by lambda**
+    ![DS DB record written by lambda](./docs/products-table.png)
+
+
+These screenshots provide a visual representation of the resources and their configurations for better understanding and validation.
 

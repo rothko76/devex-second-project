@@ -33,35 +33,35 @@ module "security_groups" {
 }
 
 
-# EKS Cluster to host the backend application
-# module "eks" {
-#   source = "./modules/eks"
+#EKS Cluster to host the backend application
+module "eks" {
+  source = "./modules/eks"
 
-#   cluster_name    = var.cluster_name
-#   cluster_version = "1.28"
-#   subnet_ids      = module.vpc.private_subnets
-#   vpc_id          = module.vpc.vpc_id
+  cluster_name    = var.cluster_name
+  cluster_version = "1.28"
+  subnet_ids      = module.vpc.private_subnets
+  vpc_id          = module.vpc.vpc_id
 
-#   eks_managed_node_groups = {
-#     eks_nodes = {
-#       desired_capacity = var.desired_capacity
-#       max_size         = var.max_size
-#       min_size         = var.min_size
+  eks_managed_node_groups = {
+    eks_nodes = {
+      desired_capacity = var.desired_capacity
+      max_size         = var.max_size
+      min_size         = var.min_size
+#      security_groups = [aws_security_group.kinesis_endpoint_sg_allow_eks.id]  # Use your SG here
+      instance_types = ["t3.medium"]
 
-#       instance_types = ["t3.medium"]
+      labels = {
+        Environment = "dev"
+      }
+    }
+  }
 
-#       labels = {
-#         Environment = "dev"
-#       }
-#     }
-#   }
+  cluster_endpoint_public_access = true
 
-#   cluster_endpoint_public_access = true
-
-#   tags = {
-#     Name = "eks-cluster"
-#   }
-# }
+  tags = {
+    Name = "eks-cluster"
+  }
+}
 
 resource "aws_db_subnet_group" "db_subnet_group" {
   name       = "custom-db-subnet-group"
@@ -106,27 +106,11 @@ module "kinesis" {
 
   
   kinesis_streams = {
-    user_stream = {
-      stream_name       = "user"
-      retention_period  = 24
-      tags = {
-        Name = "user"
-        Environment = "dev"
-      }
-    },
     product_stream = {
       stream_name        = "product"
       retention_period  = 24
       tags= {
         Name = "product"
-        Environment = "dev"
-      }
-    },
-    order_stream = {
-      stream_name        = "order"
-      retention_period  = 24
-      tags= {
-        Name = "order"
         Environment = "dev"
       }
     }
@@ -173,3 +157,182 @@ resource "aws_lambda_event_source_mapping" "kinesis_trigger" {
   # Optional settings:
   enabled           = true
 }
+
+
+# Bastion Host stuff
+resource "aws_key_pair" "bastion_key" {
+  key_name   = "bastion-key"
+  public_key = file("bastion-key.pub")
+}
+
+resource "aws_security_group" "bastion_sg" {
+  name        = "bastion-sg"
+  description = "Allow SSH from my IP to Bastion Host"
+  vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    description = "SSH from my IP"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["109.67.155.79/32"] #My IP address for enhanced security
+  }
+
+  egress {
+    description = "Allow all outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "bastion-sg"
+  }
+
+}
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+}
+
+# resource "aws_iam_role" "eks_access_role" {
+#   name = "eks-access-role"
+
+#   assume_role_policy = `jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Effect = "Allow"
+#         Principal = {
+#           Service = "ec2.amazonaws.com"
+#         }
+#       "Action": [
+#           "eks:DescribeCluster",
+#           "eks:ListClusters"
+#         ]    
+#         }
+#     ]
+#   })
+
+#   tags = {
+#     Name = "eks-access-role"
+#   }
+# }
+
+# resource "aws_iam_role_policy_attachment" "eks_access_policy_attachment" {
+#   role       = aws_iam_role.eks_access_role.name
+#   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+# }
+
+# resource "aws_iam_instance_profile" "eks_access_instance_profile" {
+#   name = "eks-access-instance-profile"
+#   role = aws_iam_role.eks_access_role.name
+# }
+
+resource "aws_instance" "bastion" {
+  ami                         = data.aws_ami.amazon_linux.id
+  instance_type               = "t3.micro"  # cheap and enough for SSH
+  subnet_id                   = module.vpc.public_subnets[0] # Use the first public subnet
+  vpc_security_group_ids      = [aws_security_group.bastion_sg.id]
+  associate_public_ip_address = true
+  key_name                    = aws_key_pair.bastion_key.key_name
+  #iam_instance_profile        = aws_iam_instance_profile.eks_access_instance_profile.name
+  user_data = <<-EOF
+    #!/bin/bash
+    yum update -y
+    yum install -y unzip wget curl jq bash-completion git
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    unzip awscliv2.zip
+    ./aws/install
+    curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/latest/bin/linux/amd64/kubectl
+    chmod +x ./kubectl
+    mv ./kubectl /usr/local/bin/
+    echo "source <(kubectl completion bash)" >> /etc/bashrc
+    echo "alias k=kubectl" >> /etc/bashrc
+    echo "complete -F __start_kubectl k" >> /etc/bashrc
+    curl --silent --location "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" | tar xz -C /tmp
+    mv /tmp/eksctl /usr/local/bin
+  EOF
+
+  tags = {
+    Name = "bastion-host"
+  }
+}
+
+
+# resource "aws_security_group" "kinesis_endpoint_sg_allow_eks" {
+#   name        = "kinesis-vpc-endpoint-sg"
+#   description = "Allow EKS nodes to access Kinesis VPC endpoint"
+#   vpc_id      = module.vpc.vpc_id
+
+#   ingress {
+#     description = "Allow HTTPS from EKS nodes"
+#     from_port   = 443
+#     to_port     = 443
+#     protocol    = "tcp"
+#     security_groups = [module.eks.node_security_group_id]  # Use the EKS node security group
+#   }
+
+#   egress {
+#     from_port   = 0
+#     to_port     = 0
+#     protocol    = "-1"
+#     cidr_blocks = ["0.0.0.0/0"]
+#   }
+
+#   tags = {
+#     Name = "kinesis-endpoint-sg-allow-eks"
+#   }
+# }
+
+# resource "aws_vpc_endpoint" "kinesis" {
+#   vpc_id              = module.vpc.vpc_id
+#   subnet_ids          = module.vpc.private_subnets
+#   security_group_ids  = [aws_security_group.kinesis_endpoint_sg_allow_eks.id]
+#   service_name        = "com.amazonaws.${var.region}.kinesis-streams"
+#   vpc_endpoint_type   = "Interface"
+#   private_dns_enabled = true
+
+#   tags = {
+#     Name = "kinesis-vpc-endpoint"
+#   }
+# }
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role_policy_attachment" "kinesis_write_policy_attachment" {
+  role       = "eks_nodes-eks-node-group-20250503064836807400000001"  # Replace with the actual worker node IAM role name
+  policy_arn = aws_iam_policy.kinesis_write_policy.arn
+}
+
+resource "aws_iam_policy" "kinesis_write_policy" {
+  name        = "KinesisWritePolicy"
+  description = "IAM policy to allow EKS worker nodes to access Kinesis"
+  policy      = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "kinesis:DescribeStream",
+          "kinesis:GetRecords",
+          "kinesis:GetShardIterator",
+          "kinesis:ListStreams",
+          "kinesis:PutRecord",
+          "kinesis:PutRecords"
+        ],
+        Resource = "arn:aws:kinesis:us-east-1:${data.aws_caller_identity.current.account_id}:stream/*"
+      }
+    ]
+  })
+}
+
+output "kinesis_write_policy_arn" {
+  value = aws_iam_policy.kinesis_write_policy.arn
+}
+

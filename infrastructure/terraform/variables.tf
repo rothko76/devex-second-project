@@ -6,7 +6,7 @@ variable "region" {
 
 variable "cluster_name" {
   description = "The name of the EKS cluster"
-  default     = "my-eks-cluster"
+  default     = "devex-2nd-ex-eks-cluster"
 }
 
 variable "desired_capacity" {

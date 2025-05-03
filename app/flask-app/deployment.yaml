@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devex-2nd-ex-flask-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: devex-2nd-ex-flask
+  template:
+    metadata:
+      labels:
+        app: devex-2nd-ex-flask
+    spec:
+      containers:
+      - name: devex-2nd-ex-flask
+        image: 577640772961.dkr.ecr.us-east-1.amazonaws.com/devex-2nd-ex-flask-app:latest
+        ports:
+        - containerPort: 5000

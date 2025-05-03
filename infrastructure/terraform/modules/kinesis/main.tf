@@ -10,7 +10,7 @@ resource "aws_security_group" "kinesis_endpoint" {
     from_port       = 443
     to_port         = 443
     protocol        = "tcp"
-    security_groups = var.backend_sg_ids
+    security_groups = ["sg-099ff5318836bf226"] #var.backend_sg_ids
   }
 
   egress {

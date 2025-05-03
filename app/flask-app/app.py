@@ -22,17 +22,21 @@ def index():
 # Producer: Send data to the Kinesis stream
 @app.route('/send', methods=['POST'])
 def send_data():
-    data = request.json
-    partition_key = data.get("partition_key", "default_key")
+    try:
+        data = request.json
+        partition_key = data.get("partition_key", "default_key")
 
-    # Send data to Kinesis
-    response = kinesis_client.put_record(
-        StreamName=KINESIS_STREAM_NAME,
-        Data=json.dumps(data),
-        PartitionKey=partition_key
-    )
+        # Send data to Kinesis
+        response = kinesis_client.put_record(
+            StreamName=KINESIS_STREAM_NAME,
+            Data=json.dumps(data),
+            PartitionKey=partition_key
+        )
 
-    return jsonify({"status": "Data sent to Kinesis", "response": response})
+        return jsonify({"status": "Data sent to Kinesis", "response": response})
+    except Exception as e:
+        app.logger.error(f"Error processing request: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":

@@ -30,3 +30,5 @@ variable "kinesis_streams" {
     tags             = map(string)
   }))
 }
+
+
